@@ -14,7 +14,6 @@ import {
   convertZNumberPatternsToZInt,
   convertZObjectPatternsToTopLevelApi,
   convertZRecordPatternsToTopLevelApi,
-  convertZStringPatternsToTopLevelApi,
 } from "./convert-name-to-top-level-api.ts";
 import {
   convertDeprecatedErrorKeysToErrorFunction,
@@ -79,7 +78,7 @@ export function migrateZodV3ToV4(
     convertMessageKeyToError(parentStatement);
     convertDeprecatedErrorKeysToErrorFunction(parentStatement);
     convertZNumberPatternsToZInt(parentStatement, zodName);
-    convertZStringPatternsToTopLevelApi(parentStatement, zodName);
+    // convertZStringPatternsToTopLevelApi(parentStatement, zodName);
     convertZCoercePatternsToTopLevelApi(parentStatement, zodName);
     convertZObjectPatternsToTopLevelApi(parentStatement, zodName);
     convertZArrayPatternsToTopLevelApi(parentStatement, zodName);

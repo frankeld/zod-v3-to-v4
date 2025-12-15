@@ -82,7 +82,7 @@ async function runMigration(tsConfigFilePath: string) {
   });
   const allFiles = project.getSourceFiles();
 
-  log.info(`Updating v2`);
+  log.info(`Updating v3`);
 
   // Sort files alphabetically by file path
   const filesToProcess = allFiles.sort((a, b) =>
@@ -93,8 +93,8 @@ async function runMigration(tsConfigFilePath: string) {
   const progressFilePath = ".zod-migration-progress.json";
   const processedFiles = loadProcessedFiles(progressFilePath);
 
-  let processedFilesCount = processedFiles.size;
   let skippedFilesCount = 0;
+  let processedFilesCount = 0;
   const progressBar = progress({ max: filesToProcess.length });
   progressBar.start("Processing files...");
 
