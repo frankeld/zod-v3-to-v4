@@ -7,7 +7,6 @@ import {
   collectZodReferences,
   getZodName,
 } from "./collect-imports.ts";
-import { convertAstroDeprecatedZodImports } from "./convert-astro-imports.ts";
 import {
   convertZArrayPatternsToTopLevelApi,
   convertZCoercePatternsToTopLevelApi,
@@ -87,7 +86,7 @@ export function migrateZodV3ToV4(
     convertZFunctionPatternsToTopLevelApi(parentStatement);
     convertZRecordPatternsToTopLevelApi(parentStatement, zodName);
     renameZDefaultToZPrefault(parentStatement);
-    renameZNativeEnumToZEnum(parentStatement);
+    // renameZNativeEnumToZEnum(parentStatement);
     replaceZodIssueCodeWithLiteralStrings(parentStatement);
   });
 
@@ -95,7 +94,7 @@ export function migrateZodV3ToV4(
   convertZodErrorAddIssueToDirectPushes(sourceFile, zodName);
   renameZSchemaEnumToLowercase(sourceFile, zodName);
 
-  convertAstroDeprecatedZodImports(importDeclarations);
+  // convertAstroDeprecatedZodImports(importDeclarations);
 
   return sourceFile.getFullText();
 }

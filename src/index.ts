@@ -76,18 +76,54 @@ if (isCancel(tsConfigFilePath)) {
 await runMigration(tsConfigFilePath);
 
 async function runMigration(tsConfigFilePath: string) {
-  const project = new Project({ tsConfigFilePath });
-  const filesToProcess = project.getSourceFiles();
+  const project = new Project({
+    tsConfigFilePath,
+    skipFileDependencyResolution: true,
+  });
+  const allFiles = project.getSourceFiles();
 
-  let processedFilesCount = 0;
+  log.info(`Updating v2`);
+
+  // Sort files alphabetically by file path
+  const filesToProcess = allFiles.sort((a, b) =>
+    a.getFilePath().localeCompare(b.getFilePath()),
+  );
+
+  // Load processed files from progress file
+  const progressFilePath = ".zod-migration-progress.json";
+  const processedFiles = loadProcessedFiles(progressFilePath);
+
+  let processedFilesCount = processedFiles.size;
+  let skippedFilesCount = 0;
   const progressBar = progress({ max: filesToProcess.length });
   progressBar.start("Processing files...");
 
   for (const sourceFile of filesToProcess) {
+    const filePath = sourceFile.getFilePath();
+
+    // Check if file has already been processed
+    if (processedFiles.has(filePath)) {
+      // log.info(`Skipping ${filePath} (already processed)`);
+      skippedFilesCount++;
+      processedFilesCount++;
+      progressBar.advance(
+        1,
+        `Processed ${processedFilesCount}/${filesToProcess.length} files (${skippedFilesCount} skipped)`,
+      );
+      await wait(0);
+      continue;
+    }
+
     try {
+      // log.info(`Migrating ${filePath}`);
       migrateZodV3ToV4(sourceFile);
+      await sourceFile.save();
+
+      // Mark file as processed
+      processedFiles.add(filePath);
+      saveProcessedFiles(progressFilePath, processedFiles);
     } catch (err) {
-      let message = `Failed to migrate ${sourceFile.getFilePath()}`;
+      let message = `Failed to migrate ${filePath}`;
       if (err instanceof Error) {
         message += `\nReason: ${err.message}`;
       }
@@ -98,7 +134,7 @@ async function runMigration(tsConfigFilePath: string) {
     processedFilesCount++;
     progressBar.advance(
       1,
-      `Migrated ${processedFilesCount}/${filesToProcess.length} files`,
+      `Processed ${processedFilesCount}/${filesToProcess.length} files (${skippedFilesCount} skipped)`,
     );
 
     // Wait the next tick to let the progress bar update
@@ -109,7 +145,11 @@ async function runMigration(tsConfigFilePath: string) {
   // Also, it's much faster than saving each file individually.
   await project.save();
 
-  progressBar.stop("All files have been migrated.");
+  const skippedMessage =
+    skippedFilesCount > 0
+      ? ` (${skippedFilesCount} files were skipped as they were already processed)`
+      : "";
+  progressBar.stop(`All files have been migrated.${skippedMessage}`);
   outro(
     `You're all set!
 
@@ -133,6 +173,34 @@ function validateTsConfigPath(path: string) {
   }
 
   return { success: true } as const;
+}
+
+function loadProcessedFiles(progressFilePath: string): Set<string> {
+  try {
+    if (fs.existsSync(progressFilePath)) {
+      const content = fs.readFileSync(progressFilePath, "utf-8");
+      const data = JSON.parse(content);
+      return new Set(data.processedFiles || []);
+    }
+  } catch (err) {
+    // If file doesn't exist or is invalid, start fresh
+    log.warn("Could not load progress file, starting fresh");
+  }
+  return new Set<string>();
+}
+
+function saveProcessedFiles(
+  progressFilePath: string,
+  processedFiles: Set<string>,
+): void {
+  try {
+    const data = {
+      processedFiles: Array.from(processedFiles).sort(),
+    };
+    fs.writeFileSync(progressFilePath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    log.warn(`Could not save progress to ${progressFilePath}`);
+  }
 }
 
 function wait(ms: number) {
